@@ -190,6 +190,7 @@ services:
       KAFKA_LOG4J_LOGGERS: "kafka.cluster=WARN,kafka.controller=WARN,kafka.coordinator=WARN,kafka.log=WARN,kafka.server=WARN,state.change.logger=WARN"
       KAFKA_LOG4J_ROOT_LOGLEVEL: "WARN"
       KAFKA_TOOLS_LOG4J_LOGLEVEL: "WARN"
+      KAFKA_HEAP_OPTS: "-Xmx1g -Xms512m"
     ulimits:
       nofile:
         soft: 4096
@@ -200,10 +201,12 @@ services:
       - "sentry-secrets:/etc/kafka/secrets"
     healthcheck:
       <<: *healthcheck_defaults
-      test: ["CMD-SHELL", "nc -z localhost 9092"]
-      interval: 10s
+      # Use broker API check instead of just TCP port check to detect JVM freezes
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 --command-config /dev/null 2>&1 | grep -q 'id:'"]
+      interval: 30s
       timeout: 10s
-      retries: 30
+      retries: 3
+      start_period: 60s
   clickhouse:
     <<: [*restart_policy, *pull_policy]
     image: clickhouse-self-hosted-local
